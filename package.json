@@ -1,0 +1,28 @@
+{
+  "name": "@d3x0r/user-database-remote",
+  "version": "1.0.0",
+  "description": "User database microservice",
+  "main": "serviceLogin.mjs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/d3x0r/user-database-remote.git"
+  },
+  "keywords": [
+    "User-account",
+    "database"
+  ],
+  "author": "d3x0r",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/d3x0r/user-database/issues"
+  },
+  "homepage": "https://github.com/d3x0r/user-database#readme",
+  "dependencies": {
+    "@d3x0r/popups": "latest",
+    "@d3x0r/srg": "^1.2.0",
+    "@d3x0r/bloomnhash": "latest",
+    "@d3x0r/slab-array": "latest",
+    "jsox": "latest",
+    "sack.vfs": "github:d3x0r/sack.vfs"
+  }
+}
