@@ -1,7 +1,7 @@
 {
   "name": "@d3x0r/user-database-remote",
   "version": "1.0.0",
-  "description": "User database microservice",
+  "description": "User database microservice remote/client connection to user services",
   "main": "serviceLogin.mjs",
   "repository": {
     "type": "git",
@@ -9,20 +9,16 @@
   },
   "keywords": [
     "User-account",
+    "ermote",
     "database"
   ],
   "author": "d3x0r",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/d3x0r/user-database/issues"
   },
   "homepage": "https://github.com/d3x0r/user-database#readme",
   "dependencies": {
-    "@d3x0r/popups": "latest",
-    "@d3x0r/srg": "^1.2.0",
-    "@d3x0r/bloomnhash": "latest",
-    "@d3x0r/slab-array": "latest",
-    "jsox": "latest",
     "sack.vfs": "github:d3x0r/sack.vfs"
   }
 }
