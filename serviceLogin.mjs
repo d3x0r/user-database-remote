@@ -1,6 +1,6 @@
 
 import {sack} from "sack.vfs";
-import {default as config} from "./config.jsox";
+//import config from "./config.jsox";
 
 const AsyncFunction = Object.getPrototypeOf( async function() {} ).constructor;
 
@@ -12,6 +12,8 @@ const l = {
 	expect : new Map(),
 	events : {},
 };
+
+let Import = null;
 
 /*
 function expectUser( ws, msg ){
@@ -27,7 +29,8 @@ function open( opts ) {
 	console.log( "connect with is:", server, protocol );
 	var client = sack.WebSocket.Client( server, protocol, { perMessageDeflate: false } );
         
-	client.on("open", function (ws)  {
+	client.on("open", function ()  {
+		const ws = this;
 		console.log( "Connected (service identification in process; consult config .jsox files)" );
 		//console.log( "ws: ", this ); //  ws is also this
 		this.onmessage = ( msg_ )=> {
@@ -35,7 +38,7 @@ function open( opts ) {
 			if( msg.op === "addMethod" ) {
 				try {
 					var f = new AsyncFunction( "Import", msg.code );
-					const p = f.call( ws, (m)=>import(m) );
+					const p = f.call( ws, (m)=>(Import?Import(m):import(m)) );
 					p.then( ()=>{
 						ws.on( "connect", ws );
 					} );
@@ -63,7 +66,7 @@ function open( opts ) {
 	client.on( "close", function( msg ) {
       		console.log( "unopened connection closed" );
 	} );
-
+	return client;
 } 
 
 
@@ -79,7 +82,7 @@ export const UserDbRemote = {
 	open(opts) {
 		const realOpts = Object.assign( {}, opts );
 		realOpts.protocol= "userDatabaseClient";
-		realOpts.server = opts.server || "wss://d3x0r.org:8089/";	
+		if( !realOpts.server ) realOpts.server = "wss://d3x0r.org:8089/";	
 		realOpts.authorize = (a)=>{
 			console.log( "authorize argument:", a );
 		}
@@ -92,6 +95,9 @@ export const UserDbRemote = {
 		}else {
 			if( evt in l.events ) l.events[evt].forEach( cb=>cb() );
 		}
+	},
+	set import(val) {
+		Import = val;
 	}
 }
 
