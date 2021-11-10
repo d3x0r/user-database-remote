@@ -11,9 +11,12 @@ const AsyncFunction = Object.getPrototypeOf( async function() {} ).constructor;
 const l = {
 	expect : new Map(),
 	events : {},
+	tryAddr:0,
 };
 
 let Import = null;
+
+const extraAddrs = ["wss://d3x0r.org:8089/","wss://www.d3x0r.org:8089/"/*,"wss://d3x0r-user-database.herokuapp.com/"*/];
 
 /*
 function expectUser( ws, msg ){
@@ -23,14 +26,28 @@ function expectUser( ws, msg ){
 }
 */
 
+function retryOpen( opts ) {
+			if( l.tryAddr < extraAddrs.length ) {
+				const newOpts = Object.assign( {}, opts );
+				newOpts.server = extraAddrs[l.tryAddr++];				
+				return UserDbRemote.open(newOpts );
+			} else l.tryAddr = 0; 
+	
+}
+
 function open( opts ) {
 	const protocol = opts?.protocol || "protocol";
 	const server = opts.server;
 	console.log( "connect with is:", server, protocol );
 	var client = sack.WebSocket.Client( server, protocol, { perMessageDeflate: false } );
-        
+        let opened = false;
+	if( client.readyState < 0 ) {
+		//console.log( "Think this is already failed...; part of this is synchronous..." );
+		return retryOpen( opts );			
+	}
 	client.on("open", function ()  {
 		const ws = this;
+		opened = true;
 		console.log( "Connected (service identification in process; consult config .jsox files)" );
 		//console.log( "ws: ", this ); //  ws is also this
 		this.onmessage = ( msg_ )=> {
@@ -62,9 +79,17 @@ function open( opts ) {
 			UserDbRemote.on("close", {ws:ws, code:code, reason:reason } );
 	        } );
 	} );
-
-	client.on( "close", function( msg ) {
-      		console.log( "unopened connection closed" );
+	client.on("error", function( a,b){
+		console.log( "Is this an error?", a, b );
+	} );
+	client.on( "close", function( code,reason ) {
+		console.log( "Closed..." );
+		if( !opened ) {
+			console.log( "failed..." );
+			retryOpen( opts );			
+		} else {
+	      		console.log( "connection closed" );
+		}
 	} );
 	return client;
 } 
@@ -82,7 +107,7 @@ export const UserDbRemote = {
 	open(opts) {
 		const realOpts = Object.assign( {}, opts );
 		realOpts.protocol= "userDatabaseClient";
-		if( !realOpts.server ) realOpts.server = "wss://d3x0r.org:8089/";	
+		if( !realOpts.server ) realOpts.server = extraAddrs[l.tryAddr++];	
 		realOpts.authorize = (a)=>{
 			console.log( "authorize argument:", a );
 		}
