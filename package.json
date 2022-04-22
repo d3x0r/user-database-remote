@@ -19,6 +19,6 @@
   },
   "homepage": "https://github.com/d3x0r/user-database#readme",
   "dependencies": {
-    "sack.vfs": "github:d3x0r/sack.vfs"
+    "sack.vfs": "latest"
   }
 }
