@@ -7,9 +7,12 @@
     "type": "git",
     "url": "git+https://github.com/d3x0r/user-database-remote.git"
   },
+  "scripts": {
+    "link": "npm link @d3x0r/srg2 @d3x0r/popups @d3x0r/socket-service @d3x0r/slab-array jsox sack.vfs"
+  },
   "keywords": [
     "User-account",
-    "ermote",
+    "remote",
     "database"
   ],
   "author": "d3x0r",
@@ -19,6 +22,7 @@
   },
   "homepage": "https://github.com/d3x0r/user-database#readme",
   "dependencies": {
-    "sack.vfs": "latest"
+    "sack.vfs": "git://github.com/d3x0r/sack.vfs",
+    "@d3x0r/srg2": "git://github.com/d3x0r/srg2"
   }
 }

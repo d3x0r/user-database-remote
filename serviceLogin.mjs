@@ -1,6 +1,7 @@
 
 import {sack} from "sack.vfs";
-//import config from "./config.jsox";
+const JSOX = sack.JSOX;
+import {Events} from "sack.vfs/Events";
 
 const AsyncFunction = Object.getPrototypeOf( async function() {} ).constructor;
 
@@ -16,8 +17,7 @@ const l = {
 
 let Import = null;
 
-const extraAddrs = ["wss://d3x0r.org:8089/","wss://www.d3x0r.org:8089/"/*,"wss://d3x0r-user-database.herokuapp.com/"*/];
-const towers = ["ws://64.23.144.139:8600","wss://d3x0r.org:8089/","wss://www.d3x0r.org:8089/"/*,"wss://d3x0r-user-database.herokuapp.com/"*/];
+const towers = ["ws://64.23.144.139:8600","wss://d3x0r.org:31337/","wss://www.d3x0r.org:31337/","ws://sp1.d3x0r.org:31337/" /*,"wss://d3x0r-user-database.herokuapp.com/"*/];
 
 console.log( "Service Login started..." );
 /*
@@ -28,17 +28,20 @@ function expectUser( ws, msg ){
 }
 */
 
-class Socket {
+class Socket extends Events{
 	ws = null;
-	#events = { open:[],message:[],close:[],error:[],connect:[] };
+	#towers = [];
 	#tower = 0;
 	#url = null;
 	#protocol = null;
 	#opts = null;
+	processMessage = null; // default message handler
 	constructor( url,protocol,opts ) {
+		super();
 		this.#url = url;
 		this.#protocol = protocol;
 		this.#opts = opts;
+		this.#towers = opts.towers||towers;
 		//console.log( "Constructing new socket..." );
 		this.open();
 		//console.log( "this opened?" );
@@ -52,7 +55,11 @@ class Socket {
 		const self = this;
 		//console.log( "Connecting to URL (from tower?):", this.#url, towers[this.#tower] );
 		//console.log( "calling sack open client..", towers );
-
+		if( this.ws ) {
+			console.trace( "At least wait until it closes..." );
+			return;
+		}
+	console.trace( "Socket re-open" );
 		if( !this.#url ) {
 			let tries = 0
 			do {
@@ -87,17 +94,16 @@ class Socket {
 	}
 
 	send(m) {
-		this.ws.send(m);
-	}
-	on(e,f,g) {
-		if( "function" === typeof f ) {
-			this.#events[e].push(f);
-		} else {
-			if( e in this.#events ) this.#events[e].forEach( evt=>evt(f,g) );
-		}
+		if( "string" === typeof( m ) )
+			this.ws.send(m);
+		else
+			this.ws.send(JSOX.stringify( m ) );
 	}
 }
 
+/**
+* returns a promise that eventualy resolves into a connected client socket
+*/
 async function open( opts ) {
 	const protocol = opts?.protocol || "protocol";
 	let resolve;
@@ -112,7 +118,6 @@ async function open( opts ) {
 
 		const client = new Socket( null, protocol, { perMessageDeflate: false } );
 		//var client = sack.WebSocket.Client( server, protocol, { perMessageDeflate: false } );
-        
 		client.on("open", function (ws)  {
 			//const ws = this;
 			if( resolve )  {
@@ -125,17 +130,18 @@ async function open( opts ) {
 				const msg = sack.JSOX.parse( msg_ );
 				if( msg.op === "addMethod" ) {
 					try {
-						var f = new AsyncFunction( "Import", "on", "opts", msg.code );
-						const p = f.call( ws, (m)=>(Import?Import(m):import(m)), UserDbRemote.on, opts );
+						var f = new AsyncFunction( "Import", "on", "opts", "socket", msg.code );
+						const p = f.call( ws, (m)=>(Import?Import(m):import(m)), UserDbRemote.on.bind(UserDbRemote), opts, client );
 						p.then( ()=>{
 							client.on( "connect", ws );
 						} );
+						//console.log( "Added methods to socket" )
 					} catch( err ) {
 						console.log( "Function compilation error:", err,"\n", msg.code );
 					}
 				}
 				else {
-					if( ws.processMessage && !ws.processMessage( msg )  ){
+					if( client.processMessage && !client.processMessage( msg )  ){
 						if( msg.op === "authorize" ) {
 							// expect a connection from a user.
 							client.on( "authorize", msg.user );
@@ -145,27 +151,24 @@ async function open( opts ) {
 						}
 					}
 				}
-       	       		};
-			ws.on( "close", function( code,reason ) {
-				client.on("close", {ws:ws, code:code, reason:reason } );
-		        } );
+    		};
 		} );
 
+ 
 		client.on( "close", function( msg ) {
-			
-			console.log( "(maybe we don't do this? unopened connection closed" );
-			tryOne();
-		
+			console.log( "(maybe we don't do this? unopened connection closed, but added timer)" );
+			setTimeout( tryOne, 5000 );
 		} );
+
+
 		if( !resolve )
 			return new Promise((res,rej)=>{
 				resolve=res;
 			} );
 
+		return client;
 	}
-	//res(client );
 	
-	return client;
 
 } 
 
@@ -179,29 +182,23 @@ function handleMessage( ws, msg ) {
 	}
 }
 
-export const UserDbRemote = {
-	open(opts) {
+export class DbRemote extends Events {
+	static open(opts) {
 		const realOpts = Object.assign( {server:towers}, opts );
 		realOpts.protocol= "userDatabaseClient";
-		//if( !realOpts.server ) realOpts.server = extraAddrs[l.tryAddr++];	
 		realOpts.authorize = (a)=>{
 			console.log( "authorize argument:", a );
 		}
-		console.log( "Open with real opts?", realOpts );
+		console.log( "Open with real opts? (long promise)", realOpts );
 		return open(realOpts);
-	},
-	on( evt, d ) {
-		if( "function" === typeof d ) {
-			if( evt in l.events ) l.events[evt].push(d);
-			else l.events[evt] = [d];
-		}else {
-			if( evt in l.events ) l.events[evt].forEach( cb=>cb() );
-		}
-	},
+	}
 	set import(val) {
 		Import = val;
 	}
+	
 }
+
+export const UserDbRemote = DbRemote;
 
 // return
 // return UserDbRemote;//"this usually isn't legal?";
