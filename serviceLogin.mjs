@@ -13,11 +13,13 @@ const l = {
 	expect : new Map(),
 	events : {},
 	tryAddr:0,
+	sockets : [],
+	connected : false,
 };
 
 let Import = null;
 
-const towers = ["ws://64.23.144.139:8600","wss://d3x0r.org:31337/","wss://www.d3x0r.org:31337/","ws://sp1.d3x0r.org:31337/" /*,"wss://d3x0r-user-database.herokuapp.com/"*/];
+const towers = ["ws://74.208.226.47:8399","wss://d3x0r.org:31337/","wss://www.d3x0r.org:31337/","ws://sp.d3x0r.org:31337/" /*,"wss://d3x0r-user-database.herokuapp.com/"*/];
 
 console.log( "Service Login started..." );
 /*
@@ -31,20 +33,32 @@ function expectUser( ws, msg ){
 class Socket extends Events{
 	ws = null;
 	#towers = [];
-	#tower = 0;
 	#url = null;
 	#protocol = null;
 	#opts = null;
 	processMessage = null; // default message handler
+	static #tower = 0;
+	#tower_ = 0;
 	constructor( url,protocol,opts ) {
 		super();
 		this.#url = url;
 		this.#protocol = protocol;
 		this.#opts = opts;
 		this.#towers = opts.towers||towers;
+		l.sockets.push( this );
+		this.#tower_ = Socket.#tower++;
+		while( !towers[Socket.#tower] && Socket.#tower < towers.length ) Socket.#tower++;
+		if( Socket.#tower === towers.length ) Socket.#tower = 0;
+
 		//console.log( "Constructing new socket..." );
 		this.open();
 		//console.log( "this opened?" );
+	}
+	get tower() {
+		return this.#tower;
+	}
+	static get tower() {
+		return Socket.#tower;
 	}
 	set onmessage(f) { this.on("message",f ) }
 	set onclose(f) { this.on("close",f ) }
@@ -59,16 +73,11 @@ class Socket extends Events{
 			console.trace( "At least wait until it closes..." );
 			return;
 		}
-	console.trace( "Socket re-open" );
+		console.trace( "Socket (re)open" );
 		if( !this.#url ) {
 			let tries = 0
-			do {
-				while( !towers[this.#tower] && this.#tower < towers.length ) this.#tower++;
-				if( this.#tower === towers.length ) { if(!tries ) tries++; else { console.log( "No Available Towers..." ); return; } this.#tower = 0; continue;  }
-				break;
-			} while( 1 );
-			console.log( "Trying:", towers[this.#tower], this.#protocol );
-			this.ws = sack.WebSocket.Client( towers[this.#tower++], this.#protocol, this.#opts );
+			console.log( "Trying:", towers[self.#tower_], this.#protocol );
+			this.ws = sack.WebSocket.Client( towers[self.#tower_], this.#protocol, this.#opts );
 		} else      {
 			console.log( "opening with a single URL:", this.#url );
 			this.ws = sack.WebSocket.Client( this.#url, this.#protocol, this.#opts );
@@ -77,10 +86,21 @@ class Socket extends Events{
 		this.ws.on('open', function(  ) {
 			const ws = this;
 			self.on( "open", this );
+
+			const idx = l.sockets.findIndex( sock=>sock===self );
+			
+			if( idx >= 0 ) l.sockets.splice( idx, 1 );
+			l.sockets.forEach( sock=>sock.close( 3000, "Nevermind" ) );
+			l.sockets.length = 0;
+			l.sockets.push( self );
+			l.connected = self;
 			console.log( "websocket open." );
 		} );
 		this.ws.on('close', function( a,b) {
+			const idx = l.sockets.findIndex( sock=>sock===self );
+			if( idx >= 0 ) l.sockets.splice( idx, 1 );
 			self.on( "close",a,b );
+			if( l.connected === self ) l.connected = null;
 			// if this didn't connect?
 			console.log( "websocket closed.",a,b );
 		} );
@@ -99,6 +119,9 @@ class Socket extends Events{
 		else
 			this.ws.send(JSOX.stringify( m ) );
 	}
+	close(code,reason ) {
+		this.ws.close(code,reason);
+	}
 }
 
 /**
@@ -106,9 +129,15 @@ class Socket extends Events{
 */
 async function open( opts ) {
 	const protocol = opts?.protocol || "protocol";
-	let resolve;
 
-	return tryOne(  );
+	let resolveOne;
+	return new Promise( (res,rej)=>{
+		resolveOne = res;
+		do {
+			// try several at once actually...
+			 tryOne(  );
+		} while( Socket.tower );
+	});
 
 	// the call to Socket() steps through the towers to onnect to....
 	function tryOne(  ) {
@@ -120,9 +149,9 @@ async function open( opts ) {
 		//var client = sack.WebSocket.Client( server, protocol, { perMessageDeflate: false } );
 		client.on("open", function (ws)  {
 			//const ws = this;
-			if( resolve )  {
-				resolve( client );
-				resolve = null; 
+			if( resolveOne ) {
+				resolveOne( client );
+				resolveOne = null;
 			}
 			console.log( "Connected (service identification in process; consult config .jsox files)" );
 			//console.log( "ws: ", this ); //  ws is also this
@@ -157,14 +186,12 @@ async function open( opts ) {
  
 		client.on( "close", function( msg ) {
 			console.log( "(maybe we don't do this? unopened connection closed, but added timer)" );
-			setTimeout( tryOne, 5000 );
+			if( !l.connected || ( l.connected === client ) )
+				setTimeout( tryOne, 5000 );
+			else 
+				console.log( "something else is connected I guess?", !!l.connected );
 		} );
 
-
-		if( !resolve )
-			return new Promise((res,rej)=>{
-				resolve=res;
-			} );
 
 		return client;
 	}
