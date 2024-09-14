@@ -21,7 +21,8 @@ let Import = null;
 
 const towers = ["ws://74.208.226.47:8399","wss://d3x0r.org:31337/","wss://www.d3x0r.org:31337/","ws://sp.d3x0r.org:31337/" /*,"wss://d3x0r-user-database.herokuapp.com/"*/];
 
-console.log( "Service Login started..." );
+//console.log( "Service Login started..." );
+
 /*
 function expectUser( ws, msg ){
 	const id = sack.Id();
@@ -73,7 +74,7 @@ class Socket extends Events{
 			console.trace( "At least wait until it closes..." );
 			return;
 		}
-		console.trace( "Socket (re)open" );
+		//console.trace( "Socket (re)open" );
 		if( !this.#url ) {
 			let tries = 0
 			console.log( "Trying:", towers[self.#tower_], this.#protocol );
@@ -94,19 +95,20 @@ class Socket extends Events{
 			l.sockets.length = 0;
 			l.sockets.push( self );
 			l.connected = self;
-			console.log( "websocket open." );
+			//console.log( "websocket open." );
 		} );
 		this.ws.on('close', function( a,b) {
 			const idx = l.sockets.findIndex( sock=>sock===self );
 			if( idx >= 0 ) l.sockets.splice( idx, 1 );
+			console.log( "Normal close should happen heree?" );
 			self.on( "close",a,b );
 			if( l.connected === self ) l.connected = null;
 			// if this didn't connect?
-			console.log( "websocket closed.",a,b );
+			//console.log( "websocket closed.",a,b );
 		} );
 		this.ws.on('error', function(a,b) {
 			self.on( "error", a,b );
-			console.log( "websocket error." );
+			///console.log( "websocket error." );
 		} );
 		this.ws.on('message', function( msg ) {
 			self.on( "message", msg );
@@ -133,10 +135,10 @@ async function open( opts ) {
 	let resolveOne;
 	return new Promise( (res,rej)=>{
 		resolveOne = res;
-		do {
+		//do {
 			// try several at once actually...
 			 tryOne(  );
-		} while( Socket.tower );
+		//} while( Socket.tower );
 	});
 
 	// the call to Socket() steps through the towers to onnect to....
