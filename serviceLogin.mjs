@@ -19,7 +19,7 @@ const l = {
 
 let Import = null;
 
-const towers = ["ws://74.208.226.47:8399","wss://d3x0r.org:31337/","wss://www.d3x0r.org:31337/","ws://sp.d3x0r.org:31337/" /*,"wss://d3x0r-user-database.herokuapp.com/"*/];
+const towers = ["wss://app.d3x0r.org:8399","wss://d3x0r.org:31337/","wss://www.d3x0r.org:31337/","ws://sp.d3x0r.org:31337/" /*,"wss://d3x0r-user-database.herokuapp.com/"*/];
 
 //console.log( "Service Login started..." );
 /*
