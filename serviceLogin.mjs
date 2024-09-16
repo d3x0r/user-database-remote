@@ -21,8 +21,10 @@ let Import = null;
 
 const towers = ["ws://74.208.226.47:8399","wss://d3x0r.org:31337/","wss://www.d3x0r.org:31337/","ws://sp.d3x0r.org:31337/" /*,"wss://d3x0r-user-database.herokuapp.com/"*/];
 
-console.log( "Service Login started..." );
+//console.log( "Service Login started..." );
 /*
+// this is what the client will end up implementing... 
+//  msg will be op:expect, addr, name, ...
 function expectUser( ws, msg ){
 	const id = sack.Id();
 	l.expect.set( id, msg );
@@ -73,7 +75,7 @@ class Socket extends Events{
 			console.trace( "At least wait until it closes..." );
 			return;
 		}
-		console.trace( "Socket (re)open" );
+		//console.trace( "Socket (re)open" );
 		if( !this.#url ) {
 			let tries = 0
 			console.log( "Trying:", towers[self.#tower_], this.#protocol );
@@ -114,10 +116,14 @@ class Socket extends Events{
 	}
 
 	send(m) {
+		try {
 		if( "string" === typeof( m ) )
 			this.ws.send(m);
 		else
 			this.ws.send(JSOX.stringify( m ) );
+		}catch( err ) {
+			console.log( "Send to closed socket:", err, m );
+		}
 	}
 	close(code,reason ) {
 		this.ws.close(code,reason);
@@ -142,7 +148,7 @@ async function open( opts ) {
 	// the call to Socket() steps through the towers to onnect to....
 	function tryOne(  ) {
 
-		console.log( "connect protocol:", protocol );
+		//console.log( "connect protocol:", protocol );
 	
 
 		const client = new Socket( null, protocol, { perMessageDeflate: false } );
@@ -199,16 +205,6 @@ async function open( opts ) {
 
 } 
 
-
-
-
-
-function handleMessage( ws, msg ) {
-	if( msg.op === "addMethod" ) {
-		
-	}
-}
-
 export class DbRemote extends Events {
 	static open(opts) {
 		const realOpts = Object.assign( {server:towers}, opts );
@@ -216,7 +212,7 @@ export class DbRemote extends Events {
 		realOpts.authorize = (a)=>{
 			console.log( "authorize argument:", a );
 		}
-		console.log( "Open with real opts? (long promise)", realOpts );
+		//console.log( "Open with real opts? (long promise)", realOpts );
 		return open(realOpts);
 	}
 	set import(val) {
