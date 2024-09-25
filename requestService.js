@@ -17,7 +17,7 @@ let gotService = null;
 
 export async function firstConnect() {
 	if( wsc ) {
-		beginLogin( requestedDomain, requestedService, module.openSocket, module.connection );
+		beginLogin( requestedDomain, requestedService, wsc.openSocket, wsc.connection );
 		return wsc;
 	}
 	return await import( loginInterface+"?"+n++ ).then( (module)=>{
