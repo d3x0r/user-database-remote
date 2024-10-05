@@ -15,15 +15,17 @@ const l = {
 	tryAddr:0,
 	sockets : [],
 	connected : false,
+	connecting : null,
 };
 
 let Import = null;
 
-const towers = ["ws://74.208.226.47:8399","wss://d3x0r.org:31337/","wss://www.d3x0r.org:31337/","ws://sp.d3x0r.org:31337/" /*,"wss://d3x0r-user-database.herokuapp.com/"*/];
+const towers = ["wss://app.d3x0r.org:8399","wss://d3x0r.org:31337/","wss://www.d3x0r.org:31337/","ws://sp.d3x0r.org:31337/" /*,"wss://d3x0r-user-database.herokuapp.com/"*/];
 
 //console.log( "Service Login started..." );
-
 /*
+// this is what the client will end up implementing... 
+//  msg will be op:expect, addr, name, ...
 function expectUser( ws, msg ){
 	const id = sack.Id();
 	l.expect.set( id, msg );
@@ -70,20 +72,24 @@ class Socket extends Events{
 		const self = this;
 		//console.log( "Connecting to URL (from tower?):", this.#url, towers[this.#tower] );
 		//console.log( "calling sack open client..", towers );
+		if( DbRemote.connected.length ) {
+			console.log( "Already connected; don't try to open another server...");
+			return;
+		}
 		if( this.ws ) {
 			console.trace( "At least wait until it closes..." );
 			return;
 		}
 		//console.trace( "Socket (re)open" );
 		if( !this.#url ) {
-			let tries = 0
+			//let tries = 0
 			console.log( "Trying:", towers[self.#tower_], this.#protocol );
 			this.ws = sack.WebSocket.Client( towers[self.#tower_], this.#protocol, this.#opts );
 		} else      {
 			console.log( "opening with a single URL:", this.#url );
 			this.ws = sack.WebSocket.Client( this.#url, this.#protocol, this.#opts );
 		}
-
+		let notOpened = false;
 		this.ws.on('open', function(  ) {
 			const ws = this;
 			self.on( "open", this );
@@ -95,20 +101,25 @@ class Socket extends Events{
 			l.sockets.length = 0;
 			l.sockets.push( self );
 			l.connected = self;
-			//console.log( "websocket open." );
+			DbRemote.connected.push( self );
+			console.log( "websocket open. (shouldn't be a close?)", towers[self.#tower_] );
 		} );
 		this.ws.on('close', function( a,b) {
-			const idx = l.sockets.findIndex( sock=>sock===self );
-			if( idx >= 0 ) l.sockets.splice( idx, 1 );
-			console.log( "Normal close should happen heree?" );
-			self.on( "close",a,b );
-			if( l.connected === self ) l.connected = null;
-			// if this didn't connect?
-			//console.log( "websocket closed.",a,b );
+			if( !notOpened ) {
+				const idx = l.sockets.findIndex( sock=>sock===self );
+				if( idx >= 0 ) l.sockets.splice( idx, 1 );
+				self.on( "close",a,b );
+				if( l.connected === self ) l.connected = null;
+				// if this didn't connect?
+				console.log( "websocket closed.",towers[self.#tower_], a,b );
+			} else {
+				console.log( "not sending self close - so no timeout set?" );
+			}
 		} );
 		this.ws.on('error', function(a,b) {
+			notOpened = true;
 			self.on( "error", a,b );
-			///console.log( "websocket error." );
+			//console.log( "websocket error." );
 		} );
 		this.ws.on('message', function( msg ) {
 			self.on( "message", msg );
@@ -116,10 +127,14 @@ class Socket extends Events{
 	}
 
 	send(m) {
+		try {
 		if( "string" === typeof( m ) )
 			this.ws.send(m);
 		else
 			this.ws.send(JSOX.stringify( m ) );
+		}catch( err ) {
+			console.log( "Send to closed socket:", err, m );
+		}
 	}
 	close(code,reason ) {
 		this.ws.close(code,reason);
@@ -142,15 +157,26 @@ async function open( opts ) {
 	});
 
 	// the call to Socket() steps through the towers to onnect to....
-	function tryOne(  ) {
-
-		console.log( "connect protocol:", protocol );
-	
+	function tryOne( n ) {
+		const tid = DbRemote.timeout.findIndex( to=>to.id === n );
+		if( tid >= 0 ) DbRemote.timeout.splice( tid, 1 );
+		//console.log( "connect protocol:", protocol );
 
 		const client = new Socket( null, protocol, { perMessageDeflate: false } );
+		//console.log( "there's a new socket for each one...");
+		DbRemote.connecting.push(client);
 		//var client = sack.WebSocket.Client( server, protocol, { perMessageDeflate: false } );
 		client.on("open", function (ws)  {
 			//const ws = this;
+			timeoutValue = 5000;
+			console.log( "Clearing other sockets in timeout from trying more...", DbRemote.timeout.length );
+			DbRemote.timeout.forEach( timer=>clearTimeout( timer.timer ));
+			DbRemote.timeout.length = 0;
+
+			const wsid = DbRemote.connecting.findIndex( (c)=>c===ws );
+			if( wsid >= 0)
+				DbRemote.connecting.splice(wsid,1 );
+
 			if( resolveOne ) {
 				resolveOne( client );
 				resolveOne = null;
@@ -185,13 +211,25 @@ async function open( opts ) {
     		};
 		} );
 
- 
-		client.on( "close", function( msg ) {
-			console.log( "(maybe we don't do this? unopened connection closed, but added timer)" );
-			if( !l.connected || ( l.connected === client ) )
-				setTimeout( tryOne, 5000 );
-			else 
-				console.log( "something else is connected I guess?", !!l.connected );
+		let timeoutValue = 5000;
+		client.on( "close", function( code,reason ) {
+			const wsid = DbRemote.connecting.findIndex( (c)=>c===this.ws );
+			if( wsid >= 0)
+				DbRemote.connecting.splice(wsid,1 )
+			const wsid2 = DbRemote.connected.findIndex( (c)=>c===this.ws );
+			if( wsid2 >= 0)
+				DbRemote.connected.splice(wsid2,1 )
+	
+
+			//console.log( "(maybe we don't do this? unopened connection closed, but added timer)", !l.connected , ( l.connected === client ) );
+			if( !l.connected || ( l.connected === client ) ) {
+				timeoutValue = timeoutValue * 1.5;
+				const timer = { id:DbRemote.timeouts++, timer:0 };
+				timer.timer = setTimeout( ()=>tryOne(timer.id), timeoutValue );
+				DbRemote.timeout.push( timer );
+			} 
+			//else 
+			//	console.log( "something else is connected I guess?", !!l.connected );
 		} );
 
 
@@ -201,24 +239,18 @@ async function open( opts ) {
 
 } 
 
-
-
-
-
-function handleMessage( ws, msg ) {
-	if( msg.op === "addMethod" ) {
-		
-	}
-}
-
 export class DbRemote extends Events {
+	static connecting = [];
+	static timeouts = 0;
+	static timeout = [];
+	static connected = [];
 	static open(opts) {
 		const realOpts = Object.assign( {server:towers}, opts );
 		realOpts.protocol= "userDatabaseClient";
 		realOpts.authorize = (a)=>{
 			console.log( "authorize argument:", a );
 		}
-		console.log( "Open with real opts? (long promise)", realOpts );
+		//console.log( "Open with real opts? (long promise)", realOpts );
 		return open(realOpts);
 	}
 	set import(val) {
