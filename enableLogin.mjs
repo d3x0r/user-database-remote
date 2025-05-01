@@ -13,6 +13,18 @@ UserDbRemote.import = (a)=>{ return import(a)} ;
 
 // request for user to get unique ID from service.
 //UserDbRemote.on( "expect", expect );
+if(0) {
+console.log( "fetching google client api?" );
+const googleLoginResponse = sack.HTTPS.get( {hostname:"accounts.google.com", path:"/gsi/client", preferV4:true, version:"1.1", headers:{
+	Accept: "*/*",
+	"Accept-Encoding": "identity",
+	Connection: "close",
+	//"User-Agent":"Wget/1.21.4",
+	"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
+} });
+const googleLoginOrig = googleLoginResponse.content;
+const googleLogin = ["export default function (document) {\n", googleLoginOrig, "}"].join('');
+}
 
 const connections = new Map();
 
@@ -31,6 +43,15 @@ function initServer( loginServer ) {
 	}
 	config.loginRemote = loginServer.ws.connection.remoteAddress;
 	config.loginRemotePort = loginServer.ws.connection.remotePort;
+	loginServer.on("error",( err )=>{
+		console.log( "Error can happe instead of close?", err );
+		setTimeout( async ()=>{
+			console.log( "This should have been after 5 seconds..." );
+			//loginServer = await UserDbRemote.open( { towers: config.loginTowers } );
+			initServer( loginServer );
+		}, 5000 );
+
+	})
 	loginServer.on( "close", ()=>{
 		console.log( "Top level close on loginserver (result of userdbremote.open)" );
 		
@@ -70,10 +91,27 @@ export function enableLogin( server, app, expectCb ) {
 
 	server.addHandler( socketHandleRequest );
 	// handle /internal/loginServer request
+
 	app.get( /\/internal\//, (req,res)=>{
 		const split = req.url.split( "/" );
-		//console.log( "Resolve internal request:", split );
+		console.log( "Resolve internal request:", split );
 		switch( split[2] ) {
+		case "gsi-client":
+			console.log( "fetching google client api?" );
+
+			const googleLoginResponse = sack.HTTPS.get( {hostname:"accounts.google.com", path:"/gsi/client", preferV4:true, version:"1.1", headers:{
+				Accept: "*/*",
+				"Accept-Encoding": "identity",
+				Connection: "close",
+				//"User-Agent":"Wget/1.21.4",
+				"User-Agent":req.headers["User-Agent"] || "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
+			} });
+			const googleLoginOrig = googleLoginResponse.content;
+			const googleLogin = ["export default function (document) {\n", googleLoginOrig, "}"].join('');
+			
+			res.writeHead( 200, {'Content-Type': "text/javascript" } );
+			res.end( googleLogin );
+			return true;
 		case "loginServer":
 			if( !config.loginRemote ) {
 				if( UserDbRemote.connecting ) {

@@ -33,7 +33,12 @@ export async function firstConnect() {
 }
 // gets login interface from login server
 // blocks until a connection happens - should be a temporary thing that it blocks...
-let wsc = null;
+let waitFail = null;
+let waitOk = null;
+export let wait = new Promise( (res,rej)=>{
+	waitOk = res; waitFail = rej;
+});
+export let wsc = null;
 
 export function reConnect() {
 	if( !requestedDomain || !requestedService ) throw new Error( "Please request a service before reconnecting!");
@@ -45,6 +50,7 @@ export async function requestService( domain, service, onGotService ) {
 	requestedDomain = domain; requestedService = service;
 	if( !wsc ) {
 		wsc = await firstConnect();
+		waitOk( wsc );
 	} else {
 		console.log( "This should be a reconnect....")
 	}
@@ -66,8 +72,8 @@ function beginLogin( domain, service, openSocket, connection ) {
 			}
 		} ) 
 
-		connection.loginForm = popups.makeLoginForm( (token)=>{
-			if( !token ) {
+		connection.loginForm = popups.makeLoginForm( (passFail)=>{
+			if( !passFail ) {
 				console.log( "login failed, or service lookup failed, or request to service instance was disconnected...")
 				return;
 			}
@@ -75,9 +81,10 @@ function beginLogin( domain, service, openSocket, connection ) {
 				function retry() {
 					tries++;
 					if( tries > 3 ){ console.log( "stop trying?" );return;}
-					console.log( "login completed...", token.name, token.svc&&token.svc.key );
 					connection.request( domain, service ).then( (token)=>{
 						;
+						// token.name
+						// token.svc: { addr:{addr:[ {address},... ], port:"1234"},key:[] }
 						console.log( "module request:", token );
 						l.login = token; // this is 'connection' also.
 						connection.loginForm.hide();
@@ -97,10 +104,10 @@ function beginLogin( domain, service, openSocket, connection ) {
 				retry();
 			}
 			
-			, {wsLoginClient:connection ,
-				useForm: (location.protocol + "//"+loginServer.loginRemote+":"+loginServer.loginRemotePort) + "/login/loginForm.html",
-				parent: document.getElementById( "game" )
-				
+			, { wsLoginClient:connection
+			  , useForm: (location.protocol + "//"+loginServer.loginRemote+":"+loginServer.loginRemotePort) + "/login/loginForm.html"
+			  , parent: document.getElementById( "game" )
+			  , addScriptsToBody : true
 			} );
 	
 		

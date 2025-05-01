@@ -48,7 +48,7 @@ class Socket extends Events{
 		this.#protocol = protocol;
 		this.#opts = opts;
 		this.#towers = opts.towers||towers;
-		l.sockets.push( this );
+		//l.sockets.push( this );
 		this.#tower_ = Socket.#tower++;
 		while( !towers[Socket.#tower] && Socket.#tower < towers.length ) Socket.#tower++;
 		if( Socket.#tower === towers.length ) Socket.#tower = 0;
@@ -70,7 +70,7 @@ class Socket extends Events{
 	open() {
 		// try multiple hosts... 
 		const self = this;
-		//console.log( "Connecting to URL (from tower?):", this.#url, towers[this.#tower] );
+		//console.trace( "Connecting to URL (from tower?):", this.#url, towers[this.#tower_] );
 		//console.log( "calling sack open client..", towers );
 		if( DbRemote.connected.length ) {
 			console.log( "Already connected; don't try to open another server...");
@@ -95,8 +95,9 @@ class Socket extends Events{
 			self.on( "open", this );
 
 			const idx = l.sockets.findIndex( sock=>sock===self );
-			
+			//console.log( "my own socket in sockets: (shouldn't have this?)", idx );
 			if( idx >= 0 ) l.sockets.splice( idx, 1 );
+			//console.log( "Closing all other open sockets...", l.sockets.length);
 			l.sockets.forEach( sock=>sock.close( 3000, "Nevermind" ) );
 			l.sockets.length = 0;
 			l.sockets.push( self );
