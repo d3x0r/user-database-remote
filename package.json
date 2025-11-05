@@ -1,6 +1,6 @@
 {
   "name": "@d3x0r/user-database-remote",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "User database microservice remote/client connection to user services",
   "main": "serviceLogin.mjs",
   "repository": {

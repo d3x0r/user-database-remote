@@ -119,3 +119,10 @@ firstConnect();  // reinitialzes the login, which connect,
 
 ```
 
+---
+
+# Changelog
+- 1.0.1
+  - 
+- 1.0.0
+  - Initial Version
