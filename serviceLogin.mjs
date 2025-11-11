@@ -10,12 +10,8 @@ const AsyncFunction = Object.getPrototypeOf( async function() {} ).constructor;
 //    } );
 
 const l = {
-	expect : new Map(),
-	events : {},
-	tryAddr:0,
 	sockets : [],
 	connected : false,
-	connecting : null,
 };
 
 let Import = null;

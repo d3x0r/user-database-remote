@@ -122,7 +122,9 @@ firstConnect();  // reinitialzes the login, which connect,
 ---
 
 # Changelog
+- 1.0.2
+  - major functionality fixes, basically worked.
 - 1.0.1
-  - 
+  - minor fixes
 - 1.0.0
   - Initial Version

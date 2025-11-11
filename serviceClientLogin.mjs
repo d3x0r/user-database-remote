@@ -7,6 +7,9 @@ const l = {
 	ws : null,
 };
 import {sack} from "sack.vfs"
+import {ObjectStorage} from "sack.vfs/object-storage"
+const objectStorage = new ObjectStorage( "localStorage.os" );
+
 const JSOX=sack.JSOX;
 //import {connection,Alert,openSocket} from "/login/webSocketClient.js";
 let loginServer = (await import( "http://localhost:5542/internal/loginServer" )).default;
@@ -50,17 +53,32 @@ function Alert( message ) {
 
 class LocalStorage {
 	map = new Map();
+	waitRes = null;
+	wait = new Promise( (res)=>this.waitRes=res );
 	constructor() {
+		objectStorage.get( '*' ).then( (obj)=>{
+			if( obj ) {
+				//console.log( "Got a map back, right?", obj );
+				this.map = obj;
+			}
+			this.waitRes(true);
+		} );
 	}
 	setItem(a,b) {
 		this.map.set(a,b);
+		objectStorage.put( this.map, {id:'*'} );
 	}
-	getItem(a,b) {
-		this.map.get(a,b);
+	getItem(a) {
+		//console.log( "map is ?", this.map, a  );
+		return this.map.get(a);
 	}
 }
 
 const localStorage = new LocalStorage();
+
+await localStorage.wait;
+
+localStorage.setItem( "now", (new Date()).toString() );
 
 export class LoginClient extends Protocol {
 	waitRes = null;

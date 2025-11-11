@@ -10,6 +10,24 @@
   "scripts": {
     "link": "npm link @d3x0r/srg2 @d3x0r/popups @d3x0r/socket-service @d3x0r/slab-array jsox sack.vfs"
   },
+  "exports": {
+    ".": {
+      "require": "./requestService.js",
+      "import": "./requestService.js"
+    },
+    "./node": {
+      "import": "./serviceClientLogin.mjs"
+    },
+    "./web": {
+      "import": "./requestService.js"
+    },
+    "./service": {
+      "import": "./serviceLogin.mjs"
+    },
+    "./enableLogin": {
+      "import": "./enableLogin.mjs"
+    }
+  },
   "keywords": [
     "User-account",
     "remote",

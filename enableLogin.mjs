@@ -1,4 +1,9 @@
 import {sack} from "sack.vfs" // Id()
+
+
+//const parts = import.meta.url.split('/'); 
+//console.log( "split:", parts );
+
 export const config = (await import( "file://"+process.cwd()+  "/config.jsox" )).default;
 //------------------------
 // Login service hook.
@@ -94,7 +99,7 @@ export function enableLogin( server, app, expectCb ) {
 
 	app.get( /\/internal\//, (req,res)=>{
 		const split = req.url.split( "/" );
-		console.log( "Resolve internal request:", split );
+		//console.log( "Resolve internal request:", split );
 		switch( split[2] ) {
 		case "gsi-client":
 			console.log( "fetching google client api?" );
