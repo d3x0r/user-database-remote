@@ -58,22 +58,19 @@ export function getUser( id ) {
 }
 
 function expect( msg ) {
-
 	const id = sack.Id();
-	const user = msg;
-	console.trace( "Told to expect a user: does this result with my own unique ID?", msg, id );
-	connections.set( id, user );
-	
-	// lookup my own user ? Prepare with right object?
-	// connections.set( msg.something, msg ) ;	
+	connections.set( id, msg );
 	return id;
 }
 
 export function enableLogin( server, app, expectCb ) {
 	if( expectCb )
 		UserDbRemote.on( "expect", expectCb );
-	else
+	else {
+		// register default handler that just gives a random unique ID
+		// that can be used to get the user information.
 		UserDbRemote.on( "expect", expect );
+	}
 
 	server.addHandler( socketHandleRequest );
 	// handle /internal/loginServer request
