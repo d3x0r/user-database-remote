@@ -48,25 +48,6 @@ function initServer( loginServer ) {
 	}
 	config.loginRemote = loginServer.ws.connection.remoteAddress;
 	config.loginRemotePort = loginServer.ws.connection.remotePort;
-	loginServer.on("error",( err )=>{
-		console.log( "Error can happe instead of close?", err );
-		setTimeout( async ()=>{
-			console.log( "This should have been after 5 seconds..." );
-			//loginServer = await UserDbRemote.open( { towers: config.loginTowers } );
-			initServer( loginServer );
-		}, 5000 );
-
-	})
-	loginServer.on( "close", ()=>{
-		console.log( "Top level close on loginserver (result of userdbremote.open)" );
-		
-		//loginServer = null;
-		setTimeout( async ()=>{
-				console.log( "This should have been after 5 seconds..." );
-				//loginServer = await UserDbRemote.open( { towers: config.loginTowers } );
-				initServer( loginServer );
-			}, 5000 );
-	} );
 
 }
 
@@ -139,8 +120,6 @@ export function enableLogin( server, app, expectCb ) {
 		}
 	} );
 
-	UserDbRemote.open( { port:server.serverOpts.port, towers: config.loginTowers } ).then( (loginServer)=>{
-		initServer(loginServer );
-	});
+	UserDbRemote.open( { port:server.serverOpts.port, towers: config.loginTowers } ).then( initServer );
 	
 }

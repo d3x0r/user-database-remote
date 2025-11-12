@@ -89,7 +89,7 @@ export class LoginClient extends Protocol {
 
 	constructor(  ) {
 		super( null, "login" );
-		console.log( "Login Client created!" );
+		//console.log( "Login Client created!" );
 		super.processMessage = (ws,msg, _msg)=>{
 			//const _msg = JSOX.parse( msg );
 			//console.log( "new process message:", ws, msg );
@@ -102,7 +102,7 @@ export class LoginClient extends Protocol {
 		}
 		this.on( "open", (ws, evt)=>{
 			let idx = this.#connecting.findIndex( c=>c.ws===ws );
-			console.log( "login client connected to something..." );
+			//console.log( "login client connected to something..." );
 			if( idx >= 0 ) {
 				this.ws = ws;
 				l.ws = ws;
@@ -112,12 +112,13 @@ export class LoginClient extends Protocol {
 			}
 			//console.log( "and close remaining..." );
 			for( let ws of this.#connecting ) {
+				//console.log( "issuing close to other towers...", ws );
 				ws.ws.close( 3000, "nevermind" );
 			}
 			this.#connecting.length = 0;
 		} );
 		this.on( "close", (ws, code, reason)=>{
-			console.log( "Close happened?", ws, code, reason );
+			//console.log( "Close happened?", ws, code, reason );
 			let idx = this.#connecting.findIndex( c=>c.ws===ws );
 			if( idx >= 0 )
 				this.#connecting.splice( idx, 1 );
@@ -129,20 +130,16 @@ export class LoginClient extends Protocol {
 				//console.log( "add Method was given to us...", msg.code );
 				var f = new AsyncFunction("JSON", "Import", "connector", "Alert", "localStorage", msg.code);
 				const p = f.call(ws, JSOX, (i) => import(defaultServer+ i), l, Alert, localStorage);
+		
 				l.connected = true;
 				l.ws = ws;
-				l.ws.on("close", (code,reason)=>{
-					console.log( "Connection ended... ", code, reason ); 
-					console.log( "Suppose we still need to connect?" );
-					this.on( "close", [code,reason] );
-	   
-				})
 				if (l.loginForm) l.loginForm.connect();
 				// result should trigger normal events in login form to close.
 				p.then( ()=>{
 					ws.resume();
 					this.waitRes( true );
 				});
+				this.on( "connect", true );
 			} catch (err) {
 				console.log("Function compilation error:", err, "\n", msg.code);
 			}
@@ -173,18 +170,16 @@ export class LoginClient extends Protocol {
 	}
 
 	guestLogin( name ) {
-		return this.wait.then( ()=>{
-			return this.ws.doGuest(name);
-		} );
+		return this.wait.then( ()=>this.ws.doGuest(name) );
 	}
 
 	login( name, pass ) {
-		return this.wait.then( ()=>{
-			//console.log( "this is what?", this );
-			return this.ws.doLogin(name, pass);
-		} );
+		return this.wait.then( ()=>this.ws.doLogin(name, pass) );
 	}
 
+	resume(  ) {
+		return this.wait.then(  ()=>this.ws.resume );
+	}
 	create( display, account, password, email ) {
 		return this.wait.then( ()=>{
 			return this.ws.doCreate( display, account, password, email );
