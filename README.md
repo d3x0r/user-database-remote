@@ -122,6 +122,8 @@ firstConnect();  // reinitialzes the login, which connect,
 ---
 
 # Changelog
+- 1.0.3
+  - Split into more modular product, supports several modes for server enable and client requests.
 - 1.0.2
   - major functionality fixes, basically worked.
 - 1.0.1
