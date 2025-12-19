@@ -12,8 +12,8 @@
   },
   "exports": {
     ".": {
-      "require": "./requestService.js",
-      "import": "./requestService.js"
+      "require": "./serviceLogin.mjs",
+      "import": "./serviceLogin.mjs"
     },
     "./node": {
       "import": "./serviceClientLogin.mjs"
@@ -25,6 +25,9 @@
       "import": "./serviceLogin.mjs"
     },
     "./enableLogin": {
+      "import": "./enableLogin.mjs"
+    },
+    "./enableLogin.mjs": {
       "import": "./enableLogin.mjs"
     }
   },

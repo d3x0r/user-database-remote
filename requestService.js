@@ -17,13 +17,15 @@ let gotService = null;
 
 export async function firstConnect() {
 	if( wsc ) {
-		beginLogin( requestedDomain, requestedService, wsc.openSocket, wsc.connection );
+		beginLogin( requestedDomain, requestedService, wsc.openSocket, wsc.connection ).then( ( arg )=>{
+			console.log( "login completed?", arg );
+		});
 		return wsc;
 	}
 	return await import( loginInterface+"?"+n++ ).then( (module)=>{
 		//console.log("Thing:", module );
-		beginLogin( requestedDomain, requestedService, module.openSocket, module.connection );
-		return module;
+		return beginLogin( requestedDomain, requestedService, module.openSocket, module.connection ).then( ()=>{return module} );
+		//return module;
 	} ).catch( (err)=>{
 		//console.log( "err:", err );
 		return new Promise( (res,rej)=>{
@@ -42,7 +44,9 @@ export let wsc = null;
 
 export function reConnect() {
 	if( !requestedDomain || !requestedService ) throw new Error( "Please request a service before reconnecting!");
-	beginLogin( requestedDomain, requestedService, wsc.openSocket, wsc.connection );
+	beginLogin( requestedDomain, requestedService, wsc.openSocket, wsc.connection ).then( ( arg )=>{
+		console.log( "Reconnected, login resolved?", arg );
+	});
 }
 //import {connection,Alert,openSocket} from "/login/webSocketClient.js";
 export async function requestService( domain, service, onGotService ) {
@@ -72,6 +76,21 @@ function beginLogin( domain, service, openSocket, connection ) {
 			}
 		} ) 
 
+		connection.on( "login", (arg)=>{
+			// login completed OK... we don't know anything other then "yes", but now request.
+			console.log( "Login with arg:", arg );
+			connection.loginForm.login(true);
+		})
+		connection.on( "create", (arg)=>{
+			// login completed OK... we don't know anything other then "yes", but now request.
+			console.log( "create with arg:", arg );
+			connection.loginForm.login(true);
+		})
+		connection.on( "guest", (arg)=>{
+			// login completed OK... we don't know anything other then "yes", but now request.
+			console.log( "guest with arg:", arg );
+			connection.loginForm.login(true);
+		})
 		connection.loginForm = popups.makeLoginForm( (passFail)=>{
 			if( !passFail ) {
 				console.log( "login failed, or service lookup failed, or request to service instance was disconnected...")
@@ -85,7 +104,7 @@ function beginLogin( domain, service, openSocket, connection ) {
 						;
 						// token.name
 						// token.svc: { addr:{addr:[ {address},... ], port:"1234"},key:[] }
-						console.log( "module request:", token );
+						//console.log( "module request:", token );
 						l.login = token; // this is 'connection' also.
 						connection.loginForm.hide();
 						socket.close( 1000, "Thank You."); // close the login socket.
