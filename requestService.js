@@ -1,12 +1,16 @@
 //import {openSocket as ChainProtocol} from "./chainreact.js"
-import {popups} from "/node_modules/@d3x0r/popups/popups.mjs"
+import {popups} from "/node_modules/@d3x0r/popups2/popups.js"
 const l = {
 	login : null,
 };
 
 //import {connection,Alert,openSocket} from "/login/webSocketClient.js";
 import loginServer from "/internal/loginServer";
-const loginInterface = ( ("https://"+loginServer.loginRemote+":"+loginServer.loginRemotePort) || "https://d3x0r.org:8089" ) + "/login/webSocketClient.js";
+const loginEndpoint = ("https://"+loginServer.loginRemote+":"+loginServer.loginRemotePort) || "https://d3x0r.org:8089";
+const loginInterface = loginEndpoint + "/login/webSocketClient.js";
+const {makeLoginForm} = await ( import( loginEndpoint + "/login/login-form.js" ).catch( (err)=>{
+		return import( loginEndpoint.replace("https", "http" )+ "/login/login-form.js" );
+	} ) );
 
 let n = 0;
 let loginDone = false;
@@ -17,13 +21,14 @@ let gotService = null;
 
 export async function firstConnect() {
 	if( wsc ) {
-		beginLogin( requestedDomain, requestedService, wsc.openSocket, wsc.connection );
+		beginLogin( requestedDomain, requestedService, wsc.openSocket, wsc.connection ).then( ( arg )=>{
+			console.log( "login completed?", arg );
+		});
 		return wsc;
 	}
 	return await import( loginInterface+"?"+n++ ).then( (module)=>{
 		//console.log("Thing:", module );
-		beginLogin( requestedDomain, requestedService, module.openSocket, module.connection );
-		return module;
+		return beginLogin( requestedDomain, requestedService, module.openSocket, module.connection ).then( ()=>{return module} );
 	} ).catch( (err)=>{
 		//console.log( "err:", err );
 		return new Promise( (res,rej)=>{
@@ -42,7 +47,9 @@ export let wsc = null;
 
 export function reConnect() {
 	if( !requestedDomain || !requestedService ) throw new Error( "Please request a service before reconnecting!");
-	beginLogin( requestedDomain, requestedService, wsc.openSocket, wsc.connection );
+	beginLogin( requestedDomain, requestedService, wsc.openSocket, wsc.connection ).then( (arg)=>{
+		console.log( "Reconnected, login resolved?", arg );
+	} );
 }
 //import {connection,Alert,openSocket} from "/login/webSocketClient.js";
 export async function requestService( domain, service, onGotService ) {
@@ -72,7 +79,22 @@ function beginLogin( domain, service, openSocket, connection ) {
 			}
 		} ) 
 
-		connection.loginForm = popups.makeLoginForm( (passFail)=>{
+		connection.on( "login", (arg)=>{
+			// login completed OK... we don't know anything other then "yes", but now request.
+			console.log( "Login with arg:", arg );
+			connection.loginForm.login(arg);
+		})
+		connection.on( "create", (arg)=>{
+			// login completed OK... we don't know anything other then "yes", but now request.
+			console.log( "create with arg:", arg );
+			connection.loginForm.login(arg);
+		})
+		connection.on( "guest", (name)=>{
+			// login completed OK... we don't know anything other then "yes", but now request.
+			//console.log( "guest with arg:", name );
+			connection.loginForm.login(name);
+		})
+		connection.loginForm = makeLoginForm( (passFail)=>{
 			if( !passFail ) {
 				console.log( "login failed, or service lookup failed, or request to service instance was disconnected...")
 				return;
@@ -85,11 +107,11 @@ function beginLogin( domain, service, openSocket, connection ) {
 						;
 						// token.name
 						// token.svc: { addr:{addr:[ {address},... ], port:"1234"},key:[] }
-						console.log( "module request:", token );
+						//console.log( "module request:", token );
 						l.login = token; // this is 'connection' also.
 						connection.loginForm.hide();
-						socket.close( 1000, "Thank You."); // close the login socket.
 						if( token.svc ) {
+							socket.close( 1000, "Thank You."); // done with the login socket only once we have a service
 							if( gotService )
 								gotService( token );
 							else

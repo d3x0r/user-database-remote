@@ -16,7 +16,7 @@ const l = {
 
 let Import = null;
 
-const towers = ["wss://app.d3x0r.org:8399","wss://d3x0r.org:31337/","wss://www.d3x0r.org:31337/","ws://sp.d3x0r.org:31337/" /*,"wss://d3x0r-user-database.herokuapp.com/"*/];
+const towers = process.env.LOGIN_TOWERS?JSOX.parse( process.env.LOGIN_TOWERS ):["wss://app.d3x0r.org:8399","wss://d3x0r.org:31337/","wss://www.d3x0r.org:31337/","ws://sp.d3x0r.org:31337/" /*,"wss://d3x0r-user-database.herokuapp.com/"*/];
 
 //console.log( "Service Login started..." );
 /*
@@ -28,6 +28,13 @@ function expectUser( ws, msg ){
 	ws.send( JSOX.stringify( {op:"expect", rid:msg.id, id:id, addr:config.publicAddress } ) );
 }
 */
+
+let waitFail = null;
+let waitOk = null;
+export let wait = new Promise( (res,rej)=>{
+	waitOk = res; waitFail = rej;
+});
+export let wsc = null;
 
 class Socket extends Events{
 	ws = null;
@@ -79,8 +86,13 @@ class Socket extends Events{
 		//console.trace( "Socket (re)open" );
 		if( !this.#url ) {
 			//let tries = 0
-			console.log( "Trying:", towers[self.#tower_], this.#protocol );
-			this.ws = sack.WebSocket.Client( towers[self.#tower_], this.#protocol, this.#opts );
+			if( self.#tower_ < towers.length ) {
+				console.log( "Trying:", towers, towers[self.#tower_], this.#protocol );
+				this.ws = sack.WebSocket.Client( towers[self.#tower_], this.#protocol, this.#opts );
+			} else {
+				console.error( "!!! No towers were configured" );
+				return;
+			}
 		} else      {
 			console.log( "opening with a single URL:", this.#url );
 			this.ws = sack.WebSocket.Client( this.#url, this.#protocol, this.#opts );
@@ -254,6 +266,14 @@ export class DbRemote extends Events {
 		Import = val;
 	}
 	
+}
+
+export async function requestService( domain, service, onGotService ) {
+	console.log( "standard interface, requests service:", domain, service, onGotService );
+}
+
+export async function firstConnect() {
+	dbRemote.open();
 }
 
 export const UserDbRemote = DbRemote;

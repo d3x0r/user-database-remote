@@ -4,32 +4,22 @@ import {sack} from "sack.vfs" // Id()
 //const parts = import.meta.url.split('/'); 
 //console.log( "split:", parts );
 
-export const config = (await import( "file://"+process.cwd()+  "/config.jsox" )).default;
+export const config = (await (import( "file://"+process.cwd()+  "/config-login-service.jsox" ).catch(err=>{ return {default:{}}; }))).default;
 //------------------------
 // Login service hook.
 import {handleRequest as socketHandleRequest} from "@d3x0r/socket-service";
 
+const towers = process.env.LOGIN_TOWERS?sack.JSOX.parse( process.env.LOGIN_TOWERS ): config.loginTowers;
 //const loginCode = sack.HTTPS.get( { port:8089, hostname:"d3x0r.org", path:"serviceLogin.mjs" } );
 //  eval( loginCode ); ... (sort-of)
 //import {UserDbRemote} from "@d3x0r/user-database-remote";
 import {UserDbRemote} from "./serviceLogin.mjs";
+export {UserDbRemote}
 
 UserDbRemote.import = (a)=>{ return import(a)} ;
 
 // request for user to get unique ID from service.
 //UserDbRemote.on( "expect", expect );
-if(0) {
-console.log( "fetching google client api?" );
-const googleLoginResponse = sack.HTTPS.get( {hostname:"accounts.google.com", path:"/gsi/client", preferV4:true, version:"1.1", headers:{
-	Accept: "*/*",
-	"Accept-Encoding": "identity",
-	Connection: "close",
-	//"User-Agent":"Wget/1.21.4",
-	"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
-} });
-const googleLoginOrig = googleLoginResponse.content;
-const googleLogin = ["export default function (document) {\n", googleLoginOrig, "}"].join('');
-}
 
 const connections = new Map();
 
@@ -95,6 +85,10 @@ export function enableLogin( server, app, expectCb ) {
 			res.writeHead( 200, {'Content-Type': "text/javascript" } );
 			res.end( googleLogin );
 			return true;
+		case "towers":
+			res.writeHead( 200, {'Content-Type': "text/json" } );
+			res.end( JSON.stringify( towers ) );
+			return true;
 		case "loginServer":
 			if( !config.loginRemote ) {
 				if( UserDbRemote.connecting ) {
@@ -117,6 +111,6 @@ export function enableLogin( server, app, expectCb ) {
 		}
 	} );
 
-	UserDbRemote.open( { port:server.serverOpts.port, towers: config.loginTowers } ).then( initServer );
+	UserDbRemote.open( { port:server.serverOpts.port, towers } ).then( initServer );
 	
 }
