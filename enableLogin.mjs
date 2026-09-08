@@ -82,11 +82,11 @@ export function enableLogin( server, app, expectCb ) {
 			const googleLoginOrig = googleLoginResponse.content;
 			const googleLogin = ["export default function (document) {\n", googleLoginOrig, "}"].join('');
 			
-			res.writeHead( 200, {'Content-Type': "text/javascript" } );
+			res.writeHead( 200, {'Content-Type': "text/javascript", 'Access-Control-Allow-Origin' : req.connection.headers.Origin  } );
 			res.end( googleLogin );
 			return true;
 		case "towers":
-			res.writeHead( 200, {'Content-Type': "text/json" } );
+			res.writeHead( 200, {'Content-Type': "text/json", 'Access-Control-Allow-Origin' : req.connection.headers.Origin } );
 			res.end( JSON.stringify( towers ) );
 			return true;
 		case "loginServer":
@@ -100,11 +100,11 @@ export function enableLogin( server, app, expectCb ) {
 				}else
 					console.log( "Not Connecting??");
 				console.log( "I don't have a good connection?", config );
-				res.writeHead( 503, {'Content-Type': "text/javascript" } );
+				res.writeHead( 503, {'Content-Type': "text/javascript", 'Access-Control-Allow-Origin' : req.connection.headers.Origin } );
 				res.end( "export default "+JSON.stringify( {loginRemote:config.loginRemote, loginRemotePort:config.loginRemotePort} ) );
 
 			}else {
-				res.writeHead( 200, {'Content-Type': "text/javascript" } );
+				res.writeHead( 200, {'Content-Type': "text/javascript", 'Access-Control-Allow-Origin' : req.connection.headers.Origin } );
 				res.end( "export default "+JSON.stringify( {loginRemote:config.loginRemote, loginRemotePort:config.loginRemotePort} ) );
 			}
 			return true;

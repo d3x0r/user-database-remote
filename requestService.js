@@ -6,7 +6,7 @@ const l = {
 
 //import {connection,Alert,openSocket} from "/login/webSocketClient.js";
 import loginServer from "/internal/loginServer";
-const loginEndpoint = ("https://"+loginServer.loginRemote+":"+loginServer.loginRemotePort) || "https://d3x0r.org:8089";
+const loginEndpoint = (location.protocol+"//"+loginServer.loginRemote+":"+loginServer.loginRemotePort) || "https://d3x0r.org:8089";
 const loginInterface = loginEndpoint + "/login/webSocketClient.js";
 const {makeLoginForm} = await ( import( loginEndpoint + "/login/login-form.js" ).catch( (err)=>{
 		return import( loginEndpoint.replace("https", "http" )+ "/login/login-form.js" );
@@ -70,6 +70,10 @@ function beginLogin( domain, service, openSocket, connection ) {
 	return openSocket().then( (socket)=>{
 		//console.log( "Open socket finally happened?", socket );
 		socket.setUiLoader();
+		connection.loginSocket = socket;
+		// handlers and the login form are created once; a reConnect() reuses them
+		// (building a second form re-injects the form's scripts and breaks on duplicate globals)
+		if( !connection.loginForm ) {
 		connection.on( "close", (code, reason)=>{
 			if( !l.login ) {
 				console.log( "Closed login before login; refresh page" );
@@ -102,7 +106,13 @@ function beginLogin( domain, service, openSocket, connection ) {
 			let tries = 0;
 				function retry() {
 					tries++;
-					if( tries > 3 ){ console.log( "stop trying?" );return;}
+					if( tries > 8 ){
+						// the service (game server) is not registered with the login server; it may still be starting
+						console.log( "Service never became available; giving up" );
+						connection.loginForm.hide();
+						if( gotService ) gotService( null );
+						return;
+					}
 					connection.request( domain, service ).then( (token)=>{
 						;
 						// token.name
@@ -111,16 +121,16 @@ function beginLogin( domain, service, openSocket, connection ) {
 						l.login = token; // this is 'connection' also.
 						connection.loginForm.hide();
 						if( token.svc ) {
-							socket.close( 1000, "Thank You."); // done with the login socket only once we have a service
+							connection.loginSocket.close( 1000, "Thank You."); // done with the login socket only once we have a service
 							if( gotService )
 								gotService( token );
 							else
 								console.log( "event callback for a new service request wasn't configured!" );
 						}else {
-							console.log( "Service wasn't given to us?")
-							retry();
+							// typically the service just restarted and hasn't re-registered yet; wait before asking again
+							console.log( "Service wasn't given to us? retrying in 2s" );
+							setTimeout( retry, 2000 );
 						}
-							// failed to get service, try again.
 					} );
 				}
 				retry();
@@ -131,8 +141,8 @@ function beginLogin( domain, service, openSocket, connection ) {
 			  , parent: document.getElementById( "game" )
 			  , addScriptsToBody : true
 			} );
-	
-		
+		} // end of one-time setup
+
 		connection.resume( ()=>{
 			// on fail
 			// else is a good login, and form events should trigger.
