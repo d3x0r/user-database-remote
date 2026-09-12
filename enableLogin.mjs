@@ -36,8 +36,9 @@ function initServer( loginServer ) {
 		console.log( "It disconnected even as it was created?");
 		return;
 	}
-	config.loginRemote = loginServer.ws.connection.remoteAddress;
-	config.loginRemotePort = loginServer.ws.connection.remotePort;
+	//console.log( "init Server got us:", loginServer.ws.connnection, config )
+	config.loginRemote = config.loginRemote || loginServer.ws.connection.remoteAddress;
+	config.loginRemotePort = config.loginRemotePort || loginServer.ws.connection.remotePort;
 
 }
 
@@ -67,7 +68,7 @@ export function enableLogin( server, app, expectCb ) {
 
 	app.get( /\/internal\//, (req,res)=>{
 		const split = req.url.split( "/" );
-		//console.log( "Resolve internal request:", split );
+		console.log( "Resolve internal request:", split, config );
 		switch( split[2] ) {
 		case "gsi-client":
 			console.log( "fetching google client api?" );

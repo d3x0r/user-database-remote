@@ -131,7 +131,9 @@ function beginLogin( domain, service, openSocket, connection ) {
 							console.log( "Service wasn't given to us? retrying in 2s" );
 							setTimeout( retry, 2000 );
 						}
-					} );
+					} ).catch( (failure)=>{
+						console.log( "What failure?", failure );
+					});
 				}
 				retry();
 			}

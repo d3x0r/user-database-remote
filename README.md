@@ -35,6 +35,18 @@ function authorize( user ) {
 up being a lot of boiler plate code which can be simplified to a simple function
 or two.
 
+Enabling login checks for a local configuration file '"file://"+process.cwd()+  "/config-login-service.jsox"`  
+which is a configuration object containing `loginRemote` and `loginRemotePort` to override what the connection to 
+the login server provides.  Across the internet the remote is probably just the remote service address, but a local service on the same host might end up resolving to localhost instead of the public address.
+
+``` js
+{
+	loginRemote: "my.login.example.com",  // if not specified, uses the port the service was connected to(at?)
+	loginRemotePort : 1234,  // if not specified, uses the port the service was connected to(at?)
+}
+```
+
+
 ``` js
 import {sack} from "sack.vfs";
 import {getUser, enableLogin} from "@d3x0r/user-database-remote/enableLogin.mjs";
