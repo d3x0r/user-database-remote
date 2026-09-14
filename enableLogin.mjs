@@ -1,6 +1,7 @@
 import {sack} from "sack.vfs" // Id()
+import {Events} from "sack.vfs/Events2" 
 
-
+const disk = sack.Volume();
 //const parts = import.meta.url.split('/'); 
 //console.log( "split:", parts );
 
@@ -55,21 +56,30 @@ function expect( msg ) {
 }
 
 export function enableLogin( server, app, expectCb ) {
-	if( expectCb )
-		UserDbRemote.on( "expect", expectCb );
-	else {
-		// register default handler that just gives a random unique ID
-		// that can be used to get the user information.
-		UserDbRemote.on( "expect", expect );
-	}
 
 	server.addHandler( socketHandleRequest );
 	// handle /internal/loginServer request
-
-	app.get( /\/internal\//, (req,res)=>{
+	app = app || server.app;
+	app.get( /\/internal\//, (req,res,next)=>{
 		const split = req.url.split( "/" );
 		console.log( "Resolve internal request:", split, config );
 		switch( split[2] ) {
+		case "requestService.js" : {
+			// The provider-neutral entry a page imports: one requestService()
+			// whose defaults are this service's own identity (service.jsox),
+			// so the page need not know it is talking to the user database.
+			// The real module is the package file, served from node_modules.
+			const svc = serviceIdentity();
+			const wrapper = [ 'import { requestService as udbRequestService, firstConnect, reConnect, wait, wsc } from "/node_modules/@d3x0r/user-database-remote/requestService.js";'
+			                , 'export const domain = ' + JSON.stringify( svc.domain ) + ';'
+			                , 'export const service = ' + JSON.stringify( svc.service ) + ';'
+			                , 'export function requestService( d, s, cb ) { return udbRequestService( d || domain, s || service, cb ); }'
+			                , 'export { firstConnect, reConnect, wait, wsc };'
+			                , '' ].join( "\n" );
+			res.writeHead( 200, {'Content-Type': "text/javascript", 'Cache-Control': "no-cache", 'Access-Control-Allow-Origin' : req.connection.headers.Origin || "*" } );
+			res.end( wrapper );
+			return true;
+		}
 		case "gsi-client":
 			console.log( "fetching google client api?" );
 
@@ -110,8 +120,56 @@ export function enableLogin( server, app, expectCb ) {
 			}
 			return true;
 		}
+		return next();
 	} );
+	const loginInterface = new LoginInterface(server);
+	if( "function" === typeof( expectCb ) )
+		loginInterface.expect = expectCb;	
+	else
+		loginInterface.expect = expect;	
+	return loginInterface;
+}
 
-	UserDbRemote.open( { port:server.serverOpts.port, towers } ).then( initServer );
-	
+
+// This service's own name for the user database: service.jsox in the working
+// directory, the same file serviceDbMethods registers with.  Absent, the
+// wrapper served above has no defaults and a page has to name the service.
+function serviceIdentity() {
+	try {
+		const src = disk.read( "service.jsox" );
+		if( src ) {
+			const svc = sack.JSOX.parse( src.toString() );
+			return { domain: svc.domain || null, service: svc.service || null };
+		}
+	} catch( err ) {
+		console.log( "service.jsox not readable for login defaults:", err.message || err );
+	}
+	return { domain: null, service: null };
+}
+
+class LoginInterface extends Events {
+	#expect = null;;
+	set expect( val ) {
+		UserDbRemote.off( "expect", this.#expect );
+		UserDbRemote.on( "expect", val );
+		this.#expect = val;
+	}
+	get expect() {
+		return this.#expect;
+	}
+
+	constructor(server) {
+		super();
+
+		UserDbRemote.open( { port:server.serverOpts.port, towers } ).then( initServer );
+
+	}
+
+	// Same call on every provider: who is this key?  Here the answer is
+	// already local - the expect handler stored it when the login server asked
+	// us to expect the user - so this is just the one-shot lookup, async for
+	// parity with providers that have to go and ask.
+	async getUser( id ) {
+		return getUser( id ) || null;
+	}
 }
